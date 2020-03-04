@@ -6,28 +6,18 @@ import (
 )
 
 // File stores info about single file
-type File struct {
-	Name  string     `json:"value"`
-	ID    string     `json:"id"`
-	Size  int64      `json:"size"`
-	Date  int64      `json:"date"`
-	Type  string     `json:"type"`
-	Files []File `json:"data,omitempty"`
-}
-
-// File stores info about single file
 type Drive interface {
-	List(id string, config ...*ListConfig) ([]File, error)
-	Search(id, search string, config ...*ListConfig) ([]File, error)
+	List(id string, config ...*ListConfig) ([]FileInfo, error)
+	Search(id, search string, config ...*ListConfig) ([]FileInfo, error)
 	Remove(id string) error
 	Read(id string) (io.ReadSeeker, error)
 	Write(id string, data io.Reader) error
 	Exists(id string) bool
-	Info(id string) (File, error)
+	Info(id string) (FileInfo, error)
 	Make(id, name string, isFolder bool) (string, error)
 	Copy(source, target, name string) (string, error)
 	Move(source, target, name string) (string, error)
-	Stats() (uint64, uint64, error)	
+	Stats() (uint64, uint64, error)
 }
 
 type FileInfo interface {
@@ -37,7 +27,7 @@ type FileInfo interface {
 
 type Adapter interface {
 	// implements Policy
-	Comply(FileID,int) bool
+	Comply(FileID, int) bool
 
 	// converts client id <-> server id
 	ToFileID(id string) FileID

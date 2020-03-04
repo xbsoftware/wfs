@@ -16,15 +16,14 @@ type DriveFacade struct {
 	operation *OperationConfig
 	verbose   bool
 
-	policy		Policy
+	policy Policy
 }
-
 
 // NewLocalDrive returns new LocalDrive object
 // which represents the file folder on local drive
 // due to ForceRootPolicy all operations outside of the root folder will be blocked
 func NewDrive(adapter Adapter, config *DriveConfig) Drive {
-	drive := DriveFacade{adapter:adapter, policy:adapter }
+	drive := DriveFacade{adapter: adapter, policy: adapter}
 
 	if config != nil {
 		drive.verbose = config.Verbose
@@ -51,13 +50,12 @@ func NewDrive(adapter Adapter, config *DriveConfig) Drive {
 	return &drive
 }
 
-
 // allow method checks is operation on object allowed or not
 func (d *DriveFacade) allow(id FileID, operation int) bool {
 	return d.policy.Comply(id, operation)
 }
 
-func (d *DriveFacade) Search(id, search string, config ...*ListConfig) ([]File, error) {
+func (d *DriveFacade) Search(id, search string, config ...*ListConfig) ([]FileInfo, error) {
 	path := d.adapter.ToFileID(id)
 	if d.verbose {
 		log.Printf("Search %s at %s", search, id)
@@ -72,9 +70,9 @@ func (d *DriveFacade) Search(id, search string, config ...*ListConfig) ([]File, 
 		return nil, err
 	}
 
-	out := make([]File, 0)
+	out := make([]FileInfo, 0)
 	for _, file := range data {
-		out = append(out, File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil})
+		out = append(out, file)
 	}
 
 	return out, nil
@@ -82,7 +80,7 @@ func (d *DriveFacade) Search(id, search string, config ...*ListConfig) ([]File, 
 }
 
 // List method returns array of files from the target folder
-func (d *DriveFacade) List(id string, config ...*ListConfig) ([]File, error) {
+func (d *DriveFacade) List(id string, config ...*ListConfig) ([]FileInfo, error) {
 	path := d.adapter.ToFileID(id)
 
 	if d.verbose {
@@ -130,7 +128,6 @@ func (d *DriveFacade) Read(id string) (io.ReadSeeker, error) {
 		log.Printf("Read %s", id)
 	}
 
-
 	if !d.allow(path, ReadOperation) {
 		return nil, errors.New("Access Denied")
 	}
@@ -168,18 +165,18 @@ func (d *DriveFacade) Exists(id string) bool {
 }
 
 // Info returns info about a single file / folder
-func (d *DriveFacade) Info(id string) (File, error) {
+func (d *DriveFacade) Info(id string) (FileInfo, error) {
 	path := d.adapter.ToFileID(id)
 	if !d.allow(path, ReadOperation) {
-		return File{}, errors.New("Access Denied")
+		return nil, errors.New("Access Denied")
 	}
 
-	info,err := d.adapter.Info(path)
+	info, err := d.adapter.Info(path)
 	if err != nil {
-		return File{}, errors.New("Access denied")
+		return nil, errors.New("Access denied")
 	}
 
-	return File{ID: info.File().ClientID(), Name:info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil }, nil
+	return info, nil
 }
 
 //Mkdir creates a new folder
@@ -229,7 +226,6 @@ func (d *DriveFacade) Copy(source, target, name string) (string, error) {
 	if st && to.Contains(from) {
 		return "", errors.New("Can't copy folder into self")
 	}
-
 
 	if d.operation.PreventNameCollision {
 		var err error
@@ -291,15 +287,15 @@ func (d *DriveFacade) Move(source, target, name string) (string, error) {
 	return moved.ClientID(), nil
 }
 
-func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []File) ([]File, error) {
+func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []FileInfo) ([]FileInfo, error) {
 	list, er := d.adapter.List(path)
 	if er != nil {
 		return nil, er
 	}
 
 	needSortData := false
-	if config.Nested || res == nil {
-		res = make([]File, 0, len(list))
+	if res == nil {
+		res = make([]FileInfo, 0, len(list))
 		needSortData = true
 	}
 
@@ -317,40 +313,28 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []File) ([
 			continue
 		}
 
-		id := file.File().ClientID()
-		fs := File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil}
-
 		if isDir && config.SubFolders {
-			sub, err := d.listFolder(file.File(),
-				config, res)
-
-			fs.Type = "folder"
+			_, err := d.listFolder(file.File(),config, res)
 			if err != nil {
 				return nil, err
-			}
-
-			if !config.Nested {
-				res = sub
-			} else if len(sub) > 0 {
-				fs.Files = sub
 			}
 		}
 
 		if !skipFile {
-			res = append(res, fs)
+			res = append(res, file)
 		}
 	}
 
 	// sort files and folders by name, folders first
 	if needSortData {
 		sort.Slice(res, func(i, j int) bool {
-			aFolder := res[i].Type == "folder"
-			bFolder := res[j].Type == "folder"
-			if (aFolder || bFolder) && res[i].Type != res[j].Type {
+			aFolder := res[i].IsDir()
+			bFolder := res[j].IsDir()
+			if (aFolder || bFolder) && aFolder != bFolder {
 				return aFolder
 			}
 
-			return strings.ToUpper(res[i].Name) < strings.ToUpper(res[j].Name)
+			return strings.ToUpper(res[i].Name()) < strings.ToUpper(res[j].Name())
 		})
 	}
 
