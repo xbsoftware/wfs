@@ -195,7 +195,7 @@ func (d *DriveFacade) Make(id, name string, isFolder bool) (string, error) {
 
 	if d.operation.PreventNameCollision {
 		var err error
-		id, err = d.checkName(path, name, isFolder)
+		name, err = d.checkName(path, name, isFolder)
 		if err != nil {
 			return "", err
 		}
