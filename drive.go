@@ -294,7 +294,7 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []FileInfo
 	}
 
 	needSortData := false
-	if res == nil {
+	if config.Nested || res == nil {
 		res = make([]FileInfo, 0, len(list))
 		needSortData = true
 	}
@@ -314,13 +314,19 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []FileInfo
 		}
 
 		if isDir && config.SubFolders {
-			_, err := d.listFolder(file.File(),config, res)
+			sub, err := d.listFolder(file.File(),config, res)
 			if err != nil {
 				return nil, err
 			}
-		}
 
-		if !skipFile {
+			if !config.Nested {
+				res = sub
+			} else if len(sub) > 0 {
+				file.SetChildren(sub)
+			}
+ 		}
+ 
+ 		if !skipFile {
 			res = append(res, file)
 		}
 	}

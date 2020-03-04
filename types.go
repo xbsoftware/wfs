@@ -23,6 +23,10 @@ type Drive interface {
 type FileInfo interface {
 	os.FileInfo
 	File() FileID
+
+	// necessary for nested data handling
+	GetChildren() []FileInfo
+	SetChildren([]FileInfo)
 }
 
 type Adapter interface {
