@@ -35,6 +35,11 @@ func init() {
 		"md":     "code",
 		"go":     "code",
 		"yml":    "code",
+		"xml":    "code",
+		"sql":    "code",
+		"py":     "code",
+		"ini":    "code",
+		"conf":   "code",
 
 		"mpg": "video",
 		"mp4": "video",
