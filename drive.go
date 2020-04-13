@@ -9,22 +9,21 @@ import (
 	"strings"
 )
 
-// Drive represents an isolated file system
+// DriveFacade represents an isolated file system
 type DriveFacade struct {
 	adapter   Adapter
 	list      *ListConfig
 	operation *OperationConfig
 	verbose   bool
 
-	policy		Policy
+	policy Policy
 }
 
-
-// NewLocalDrive returns new LocalDrive object
+// NewDrive returns new LocalDrive object
 // which represents the file folder on local drive
 // due to ForceRootPolicy all operations outside of the root folder will be blocked
 func NewDrive(adapter Adapter, config *DriveConfig) Drive {
-	drive := DriveFacade{adapter:adapter, policy:adapter }
+	drive := DriveFacade{adapter: adapter, policy: adapter}
 
 	if config != nil {
 		drive.verbose = config.Verbose
@@ -50,7 +49,6 @@ func NewDrive(adapter Adapter, config *DriveConfig) Drive {
 
 	return &drive
 }
-
 
 // allow method checks is operation on object allowed or not
 func (d *DriveFacade) allow(id FileID, operation int) bool {
@@ -130,7 +128,6 @@ func (d *DriveFacade) Read(id string) (io.ReadSeeker, error) {
 		log.Printf("Read %s", id)
 	}
 
-
 	if !d.allow(path, ReadOperation) {
 		return nil, errors.New("Access Denied")
 	}
@@ -174,15 +171,15 @@ func (d *DriveFacade) Info(id string) (File, error) {
 		return File{}, errors.New("Access Denied")
 	}
 
-	info,err := d.adapter.Info(path)
+	info, err := d.adapter.Info(path)
 	if err != nil {
 		return File{}, errors.New("Access denied")
 	}
 
-	return File{ID: info.File().ClientID(), Name:info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil }, nil
+	return File{ID: info.File().ClientID(), Name: info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil}, nil
 }
 
-//Mkdir creates a new folder
+//Make creates a new folder or a file
 func (d *DriveFacade) Make(id, name string, isFolder bool) (string, error) {
 	if d.verbose {
 		log.Printf("Make folder %s", id)
@@ -226,10 +223,9 @@ func (d *DriveFacade) Copy(source, target, name string) (string, error) {
 	}
 
 	st := from.IsFolder()
-	if st && to.Contains(from) {
+	if st && target == source {
 		return "", errors.New("Can't copy folder into self")
 	}
-
 
 	if d.operation.PreventNameCollision {
 		var err error
@@ -265,7 +261,7 @@ func (d *DriveFacade) Move(source, target, name string) (string, error) {
 		to = d.adapter.GetParent(from)
 	} else {
 		to = d.adapter.ToFileID(target)
-		if st && to.Contains(from) {
+		if st && source == target {
 			return "", errors.New("Can't copy folder into self")
 		}
 	}
