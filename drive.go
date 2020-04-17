@@ -223,7 +223,7 @@ func (d *DriveFacade) Copy(source, target, name string) (string, error) {
 	}
 
 	st := from.IsFolder()
-	if st && target == source {
+	if st && from.Contains(to) {
 		return "", errors.New("Can't copy folder into self")
 	}
 
@@ -261,7 +261,7 @@ func (d *DriveFacade) Move(source, target, name string) (string, error) {
 		to = d.adapter.GetParent(from)
 	} else {
 		to = d.adapter.ToFileID(target)
-		if st && source == target {
+		if st && from.Contains(to) {
 			return "", errors.New("Can't copy folder into self")
 		}
 	}
