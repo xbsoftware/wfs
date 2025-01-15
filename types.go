@@ -7,11 +7,11 @@ import (
 
 // File stores info about single file
 type File struct {
-	Name  string     `json:"value"`
-	ID    string     `json:"id"`
-	Size  int64      `json:"size"`
-	Date  int64      `json:"date"`
-	Type  string     `json:"type"`
+	Name  string `json:"value"`
+	ID    string `json:"id"`
+	Size  int64  `json:"size"`
+	Date  int64  `json:"date"`
+	Type  string `json:"type"`
 	Files []File `json:"data,omitempty"`
 }
 
@@ -27,7 +27,7 @@ type Drive interface {
 	Make(id, name string, isFolder bool) (string, error)
 	Copy(source, target, name string) (string, error)
 	Move(source, target, name string) (string, error)
-	Stats() (uint64, uint64, error)	
+	Stats() (uint64, uint64, error)
 }
 
 type FileInfo interface {
@@ -37,7 +37,7 @@ type FileInfo interface {
 
 type Adapter interface {
 	// implements Policy
-	Comply(FileID,int) bool
+	Comply(FileID, int) bool
 
 	// converts client id <-> server id
 	ToFileID(id string) FileID
@@ -87,7 +87,7 @@ type OperationConfig struct {
 }
 
 // MatcherFunc receives path and returns true if path matches the rule
-type MatcherFunc func(string) bool
+type MatcherFunc func(File) bool
 
 // Supported operation modes
 const (

@@ -16,15 +16,14 @@ type DriveFacade struct {
 	operation *OperationConfig
 	verbose   bool
 
-	policy		Policy
+	policy Policy
 }
-
 
 // NewLocalDrive returns new LocalDrive object
 // which represents the file folder on local drive
 // due to ForceRootPolicy all operations outside of the root folder will be blocked
 func NewDrive(adapter Adapter, config *DriveConfig) Drive {
-	drive := DriveFacade{adapter:adapter, policy:adapter }
+	drive := DriveFacade{adapter: adapter, policy: adapter}
 
 	if config != nil {
 		drive.verbose = config.Verbose
@@ -50,7 +49,6 @@ func NewDrive(adapter Adapter, config *DriveConfig) Drive {
 
 	return &drive
 }
-
 
 // allow method checks is operation on object allowed or not
 func (d *DriveFacade) allow(id FileID, operation int) bool {
@@ -130,7 +128,6 @@ func (d *DriveFacade) Read(id string) (io.ReadSeeker, error) {
 		log.Printf("Read %s", id)
 	}
 
-
 	if !d.allow(path, ReadOperation) {
 		return nil, errors.New("Access Denied")
 	}
@@ -174,15 +171,15 @@ func (d *DriveFacade) Info(id string) (File, error) {
 		return File{}, errors.New("Access Denied")
 	}
 
-	info,err := d.adapter.Info(path)
+	info, err := d.adapter.Info(path)
 	if err != nil {
 		return File{}, errors.New("Access denied")
 	}
 
-	return File{ID: info.File().ClientID(), Name:info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil }, nil
+	return File{ID: info.File().ClientID(), Name: info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil}, nil
 }
 
-//Mkdir creates a new folder
+// Mkdir creates a new folder
 func (d *DriveFacade) Make(id, name string, isFolder bool) (string, error) {
 	if d.verbose {
 		log.Printf("Make folder %s", id)
@@ -229,7 +226,6 @@ func (d *DriveFacade) Copy(source, target, name string) (string, error) {
 	if st && to.Contains(from) {
 		return "", errors.New("Can't copy folder into self")
 	}
-
 
 	if d.operation.PreventNameCollision {
 		var err error
@@ -304,31 +300,38 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []File) ([
 	}
 
 	for _, file := range list {
-		skipFile := false
-		if config.Exclude != nil && config.Exclude(file.Name()) {
+		fullID := file.File()
+		isDir := file.IsDir()
+
+		fs := File{
+			Name:  file.Name(),
+			ID:    fullID.ClientID(),
+			Size:  file.Size(),
+			Date:  file.ModTime().Unix(),
+			Type:  GetType(file.Name(), isDir),
+			Files: nil,
+		}
+
+		if config.Exclude != nil && config.Exclude(fs) {
 			continue
 		}
-		if config.Include != nil && !config.Include(file.Name()) {
+
+		skipFile := false
+		if config.Include != nil && !config.Include(fs) {
 			skipFile = true
 		}
 
-		isDir := file.IsDir()
 		if !isDir && (config.SkipFiles || skipFile) {
 			continue
 		}
 
-		id := file.File().ClientID()
-		fs := File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil}
-
 		if isDir && config.SubFolders {
-			sub, err := d.listFolder(file.File(),
-				config, res)
-
-			fs.Type = "folder"
+			sub, err := d.listFolder(fullID, config, res)
 			if err != nil {
 				return nil, err
 			}
 
+			fs.Type = "folder"
 			if !config.Nested {
 				res = sub
 			} else if len(sub) > 0 {
